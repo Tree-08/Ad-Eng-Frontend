@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Wand2 } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { apiFetch, requireApiBase } from "@/lib/api"
 
 export default function OutputPage() {
   const router = useRouter()
@@ -29,8 +30,7 @@ export default function OutputPage() {
         ;(async () => {
           try {
             setImagesLoading(true)
-            const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000"
-            const res = await fetch(`${API_BASE}/api/v1/generate`, {
+            const res = await apiFetch(`/api/v1/generate`, {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({
@@ -74,9 +74,8 @@ export default function OutputPage() {
     setIsSubmitting(true);
     setImagesLoading(true)
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000"
       const selected_url = images[selectedImage]
-      const res = await fetch(`${API_BASE}/api/v1/regenerate`, {
+      const res = await apiFetch(`/api/v1/regenerate`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -111,25 +110,29 @@ export default function OutputPage() {
   };
 
   const handleBackToInput = () => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000"
     const urls = images
     // Fire-and-forget cleanup; don't block navigation
-    navigator.sendBeacon?.(
-      `${API_BASE}/api/v1/cleanup`,
-      new Blob([JSON.stringify({ image_urls: urls })], { type: "application/json" })
-    )
+    try {
+      const base = requireApiBase()
+      navigator.sendBeacon?.(
+        `${base}/api/v1/cleanup`,
+        new Blob([JSON.stringify({ image_urls: urls })], { type: "application/json" })
+      )
+    } catch {}
     localStorage.removeItem("image_urls")
     localStorage.removeItem("pending_generate")
     router.push("/")
   }
 
   const handleGoHome = () => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000"
     const urls = images
-    navigator.sendBeacon?.(
-      `${API_BASE}/api/v1/cleanup`,
-      new Blob([JSON.stringify({ image_urls: urls })], { type: "application/json" })
-    )
+    try {
+      const base = requireApiBase()
+      navigator.sendBeacon?.(
+        `${base}/api/v1/cleanup`,
+        new Blob([JSON.stringify({ image_urls: urls })], { type: "application/json" })
+      )
+    } catch {}
     localStorage.removeItem("image_urls")
     localStorage.removeItem("pending_generate")
     router.push("/")
@@ -161,12 +164,14 @@ export default function OutputPage() {
 
   // Best-effort cleanup when tab/window closes
   useEffect(() => {
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000"
     const onUnload = () => {
       const urls = JSON.parse(localStorage.getItem("image_urls") || "[]")
       if (urls && urls.length && navigator.sendBeacon) {
-        const data = new Blob([JSON.stringify({ image_urls: urls })], { type: "application/json" })
-        navigator.sendBeacon(`${API_BASE}/api/v1/cleanup`, data)
+        try {
+          const base = requireApiBase()
+          const data = new Blob([JSON.stringify({ image_urls: urls })], { type: "application/json" })
+          navigator.sendBeacon(`${base}/api/v1/cleanup`, data)
+        } catch {}
       }
       // Do not clear localStorage here to allow retry if beacon fails
     }

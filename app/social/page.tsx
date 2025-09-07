@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { apiFetch } from "@/lib/api"
 
 type Platform = "instagram" | "linkedin" | "twitter" | "youtube"
 
@@ -38,8 +39,7 @@ export default function SocialPreviewPage() {
     const load = async () => {
       if (!fiveps) return
       try {
-        const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8000"
-        const res = await fetch(`${API_BASE}/api/v1/social_copy`, {
+        const res = await apiFetch(`/api/v1/social_copy`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ platform: selectedPlatform, ...fiveps, feedback }),
